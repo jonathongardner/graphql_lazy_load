@@ -1,0 +1,10 @@
+require: rubocop-performance
+AllCops:
+  TargetRubyVersion: 2.5.1
+inherit_gem:
+  rubocop-rails_config:
+    - config/rails.yml
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+Metrics/LineLength:
+  Max: 110
