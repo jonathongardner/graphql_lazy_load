@@ -6,7 +6,7 @@ Lazy executor for activerecord associations and graphql gem.
 
 GraphqlLazyLoad requires ActiveRecord >= 4.1.16 and Graphql >= 1.3.0. To use add this line to your application's Gemfile:
 ```ruby
-gem 'graphql_lazy_load'
+gem 'graphql_lazy_load', '~> 0.1.0'
 ```
 Then run `bundle install`.
 
