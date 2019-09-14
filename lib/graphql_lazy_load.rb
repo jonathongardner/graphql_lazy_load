@@ -4,6 +4,72 @@ require "graphql_lazy_load/version"
 require "active_record"
 
 module GraphqlLazyLoad
+  class Custom
+    def initialize(type, unique_identifier, value, **params, &block)
+      @unique_identifier = unique_identifier
+      @params = params
+      @block = block
+      @value = value
+      # Initialize the loading state for this query,
+      # or get the previously-initiated state
+      # scope cant be used as a hash key because when .hash is called on diff
+      # for ~same~ scopes its diff every time but scope == scope will return true if ~same~
+      @lazy = type.context[context_key] ||= {
+        values_to_load: Set.new,
+        ids: Set.new,
+        results: {}
+      }
+      # Register this to be loaded later unless we've already queued or loaded it
+      return if already_loaded_or_queued?
+      lazy_values.add(value)
+      lazy_ids.add(value)
+    end
+
+    # Return the loaded record, hitting the database if needed
+    def result
+      if !already_loaded? && any_to_load?
+        lazy_results.merge!(block_results)
+        lazy_values.clear
+      end
+      lazy_results[value]
+    end
+
+    private
+      attr_reader :unique_identifier, :params, :value
+
+      def block_results
+        @block.call(lazy_values, params)
+      end
+
+      def context_key
+        [unique_identifier, params]
+      end
+
+      def already_loaded_or_queued?
+        lazy_ids.include?(object_id)
+      end
+
+      def already_loaded?
+        lazy_results.key?(object_id)
+      end
+
+      def any_to_load?
+        lazy_values.any?
+      end
+
+      def lazy_ids
+        @lazy[:ids]
+      end
+
+      def lazy_values
+        @lazy[:values_to_load]
+      end
+
+      def lazy_results
+        @lazy[:results]
+      end
+  end
+
   class ActiveRecordRelation
     def initialize(type, association, scope: nil)
       @object_class = type.object.class
@@ -19,8 +85,7 @@ module GraphqlLazyLoad
         @lazy = {
           objects_to_load: Set.new,
           ids: Set.new,
-          results: {},
-          scope: scope
+          results: {}
         }
         type.context[context_key].push(@lazy)
       end
@@ -52,7 +117,7 @@ module GraphqlLazyLoad
       end
 
       def already_loaded_or_queued?
-        lazy_objects.include?(object_id)
+        lazy_ids.include?(object_id)
       end
 
       def already_loaded?
