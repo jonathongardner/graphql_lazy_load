@@ -21,7 +21,14 @@ module GraphqlLazyLoad
         return if already_loaded_or_queued?
         # use copy of object so it doesnt add preload to associations.
         # this is so associations dont get loaded to object passed so different scopes get reloaded
-        lazy_objects.add(object_class.new(type.object.attributes))
+        lazy_objects.add(
+          object_class.column_names.reduce(object_class.new) do |acc, column|
+            # only iterate over column in db so if select fields outside usual model
+            # values wont throw error
+            acc.send("#{column}=", type.object.send(column))
+            acc
+          end
+        )
         lazy_ids.add(object_id)
       end
 
